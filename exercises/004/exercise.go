@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 /*
@@ -46,17 +47,45 @@ type SimpleWorker struct{}
 // Process メソッドの実装
 func (w *SimpleWorker) Process(id int) string {
 	// TODO: "Processed: {id}" という形式の文字列を返す
-	return ""
+	return fmt.Sprintf("Processed: %d", id)
 }
 
 // Exercise004 関数の実装
 func Exercise004(numWorkers int, worker Worker) []string {
-	// TODO: 実装する
-	// ヒント:
+	if numWorkers <= 0 {
+		return []string{}
+	}
+
 	// 1. 結果を収集するためのチャネルを作成
+	results := make(chan string, numWorkers)
+	
+	// 結果を格納するスライス
+	var finalResults []string
+
 	// 2. WaitGroupを使って全ゴルーチンの完了を待つ
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
 	// 3. 各ゴルーチンでworker.Process(id)を呼ぶ
-	// 4. 結果をチャネルに送信
-	// 5. 別のゴルーチンで結果を収集
-	return nil
+	for i := 0; i < numWorkers; i++ {
+		go func(id int) {
+			defer wg.Done()
+			// 4. 結果をチャネルに送信
+			result := worker.Process(id)
+			results <- result
+		}(i)
+	}
+
+	// 5. 別のゴルーチンで全ての完了を待ってチャネルを閉じる
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// 6. チャネルから結果を収集
+	for result := range results {
+		finalResults = append(finalResults, result)
+	}
+
+	return finalResults
 }
