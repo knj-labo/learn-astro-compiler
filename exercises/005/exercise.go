@@ -93,44 +93,41 @@ func (um *UserManager) GetAllUsers() []User {
 
 // handleGetUsers ハンドラーの実装
 func (um *UserManager) handleGetUsers(w http.ResponseWriter, r *http.Request) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. Content-Type を application/json に設定
-	// 2. um.GetAllUsers() で全ユーザーを取得
-	// 3. json.Marshal() でJSONに変換
-	// 4. w.Write() でレスポンスを送信
 	w.Header().Set("Content-Type", "application/json")
+	// 2. um.GetAllUsers() で全ユーザーを取得
 	users := um.GetAllUsers()
+	// 3. json.Marshal() でJSONに変換
 	jsonData, err := json.Marshal(users)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	// 4. w.Write() でレスポンスを送信
 	w.Write(jsonData)
 }
 
 // handleGetUser ハンドラーの実装
 func (um *UserManager) handleGetUser(w http.ResponseWriter, r *http.Request) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. URLパスからIDを抽出 (/users/123 → "123")
-	// 2. strconv.Atoi() で文字列を数値に変換
-	// 3. um.GetUser() でユーザーを取得
-	// 4. 見つからない場合は404エラーを返す
-	// 5. 見つかった場合はJSONで返す
 	path := strings.TrimPrefix(r.URL.Path, "/users/")
+	// 2. strconv.Atoi() で文字列を数値に変換
 	id, err := strconv.Atoi(path)
 	if err != nil {
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 	
+	// 3. um.GetUser() でユーザーを取得
 	user, found := um.GetUser(id)
+
+	// 4. 見つからない場合は404エラーを返す
 	if !found {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 	
+	// 5. 見つかった場合はJSONで返す
 	w.Header().Set("Content-Type", "application/json")
 	jsonData, err := json.Marshal(user)
 	if err != nil {
@@ -142,18 +139,14 @@ func (um *UserManager) handleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateUser ハンドラーの実装
 func (um *UserManager) handleCreateUser(w http.ResponseWriter, r *http.Request) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. リクエストボディを読み取る
-	// 2. json.Unmarshal() でUserに変換
-	// 3. um.AddUser() でユーザーを追加
-	// 4. 作成されたユーザーをJSONで返す
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 	
+	// 2. json.Unmarshal() でUserに変換
 	var user User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
@@ -161,8 +154,10 @@ func (um *UserManager) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	
+	// 3. um.AddUser() でユーザーを追加
 	um.AddUser(user)
 	
+	// 4. 作成されたユーザーをJSONで返す
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	jsonData, err := json.Marshal(user)
@@ -175,10 +170,7 @@ func (um *UserManager) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 
 // StartServer 関数の実装
 func StartServer(manager *UserManager) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. http.HandleFunc() でルートを登録
-	// 2. http.ListenAndServe() でサーバーを起動
 	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -194,5 +186,6 @@ func StartServer(manager *UserManager) {
 		}
 	})
 	
+	// 2. http.ListenAndServe() でサーバーを起動
 	http.ListenAndServe(":8080", nil)
 }
