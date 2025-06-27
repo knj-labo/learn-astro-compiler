@@ -60,12 +60,14 @@ func main() {
 
 // User 構造体の定義
 type User struct {
-	// TODO: 実装する
+    ID    int    `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
 }
 
 // UserManager 構造体の定義
 type UserManager struct {
-	// TODO: 実装する
+    users []User // ユーザーのスライス
 }
 
 // AddUser メソッドの実装
