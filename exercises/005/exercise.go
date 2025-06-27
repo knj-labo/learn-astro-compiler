@@ -72,19 +72,23 @@ type UserManager struct {
 
 // AddUser メソッドの実装
 func (um *UserManager) AddUser(user User) {
-	// TODO: 実装する
+	um.users = append(um.users, user)
 }
 
 // GetUser メソッドの実装
 func (um *UserManager) GetUser(id int) (User, bool) {
-	// TODO: 実装する
+	for _, user := range um.users {
+		if user.ID == id {
+			return user, true
+		}
+	}
 	return User{}, false
 }
 
 // GetAllUsers メソッドの実装
 func (um *UserManager) GetAllUsers() []User {
 	// TODO: 実装する
-	return nil
+	return um.users
 }
 
 // handleGetUsers ハンドラーの実装
