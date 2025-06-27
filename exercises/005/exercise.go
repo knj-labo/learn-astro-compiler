@@ -99,6 +99,14 @@ func (um *UserManager) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	// 2. um.GetAllUsers() で全ユーザーを取得
 	// 3. json.Marshal() でJSONに変換
 	// 4. w.Write() でレスポンスを送信
+	w.Header().Set("Content-Type", "application/json")
+	users := um.GetAllUsers()
+	jsonData, err := json.Marshal(users)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonData)
 }
 
 // handleGetUser ハンドラーの実装
@@ -110,6 +118,26 @@ func (um *UserManager) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	// 3. um.GetUser() でユーザーを取得
 	// 4. 見つからない場合は404エラーを返す
 	// 5. 見つかった場合はJSONで返す
+	path := strings.TrimPrefix(r.URL.Path, "/users/")
+	id, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+	
+	user, found := um.GetUser(id)
+	if !found {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(user)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonData)
 }
 
 // handleCreateUser ハンドラーの実装
@@ -120,6 +148,29 @@ func (um *UserManager) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 	// 2. json.Unmarshal() でUserに変換
 	// 3. um.AddUser() でユーザーを追加
 	// 4. 作成されたユーザーをJSONで返す
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	
+	var user User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	um.AddUser(user)
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	jsonData, err := json.Marshal(user)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonData)
 }
 
 // StartServer 関数の実装
@@ -128,4 +179,20 @@ func StartServer(manager *UserManager) {
 	// ヒント:
 	// 1. http.HandleFunc() でルートを登録
 	// 2. http.ListenAndServe() でサーバーを起動
+	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			if r.URL.Path == "/users" {
+				manager.handleGetUsers(w, r)
+			} else {
+				manager.handleGetUser(w, r)
+			}
+		case "POST":
+			manager.handleCreateUser(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	
+	http.ListenAndServe(":8080", nil)
 }
