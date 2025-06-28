@@ -95,15 +95,37 @@ type Result struct {
 
 // WorkerPool 関数の実装
 func WorkerPool(numWorkers int, tasks []Task) []Result {
-	// TODO: 実装する
-	// ヒント:
 	// 1. タスク用のチャネルを作成
+	taskChan := make(chan Task, len(tasks))
 	// 2. 結果用のチャネルを作成
+	resultChan := make(chan Result, len(tasks))
+	var wg sync.WaitGroup
+
 	// 3. 指定された数のワーカーゴルーチンを起動
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go worker(i+1, taskChan, resultChan, &wg)
+	}
+
 	// 4. 各ワーカーはタスクを処理してResultを返す
 	// 5. すべてのタスクを送信してチャネルを閉じる
+	for _, task := range tasks {
+		taskChan <- task
+	}
+	close(taskChan)
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
 	// 6. 結果を収集して返す
-	return nil
+	var results []Result
+	for result := range resultChan {
+		results = append(results, result)
+	}
+
+	return results
 }
 
 // worker 関数（ワーカープール用のヘルパー）
@@ -122,23 +144,46 @@ func worker(id int, tasks <-chan Task, results chan<- Result, wg *sync.WaitGroup
 
 // TimeoutOperation 関数の実装
 func TimeoutOperation(timeout time.Duration, operation func() error) error {
-	// TODO: 実装する
-	// ヒント:
 	// 1. context.WithTimeout でコンテキストを作成
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	// 2. done チャネルを作成
+	done := make(chan error, 1)
+
 	// 3. 別のゴルーチンで operation を実行
+	go func() {
+		done <- operation()
+	}()
+
 	// 4. select でタイムアウトと完了を待つ
-	// 5. タイムアウトの場合は適切なエラーを返す
-	return nil
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		// 5. タイムアウトの場合は適切なエラーを返す
+		return ctx.Err()
+	}
 }
 
 // RateLimiter 関数の実装
 func RateLimiter(interval time.Duration, count int, operation func(int)) {
-	// TODO: 実装する
-	// ヒント:
+	if count <= 0 {
+		return
+	}
+
 	// 1. time.NewTicker でティッカーを作成
+	ticker := time.NewTicker(interval)
 	// 2. defer ticker.Stop()
+	defer ticker.Stop()
+
 	// 3. 指定された回数だけループ
-	// 4. <-ticker.C で間隔を待つ
-	// 5. operation を実行
+	for i := 0; i < count; i++ {
+		// 4. <-ticker.C で間隔を待つ
+		if i > 0 {
+			<-ticker.C
+		}
+		// 5. operation を実行
+		operation(i + 1)
+	}
 }
