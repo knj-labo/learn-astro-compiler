@@ -71,32 +71,69 @@ func main() {
 
 // WriteToFile 関数の実装
 func WriteToFile(filename, content string) error {
-	// TODO: 実装する
-	// ヒント:
 	// 1. os.Create() でファイルを作成
+	file, err := os.Create(filename)
+	if err != nil {
+	    return fmt.Errorf("failed to create file: %w", err)
+    }
+
 	// 2. defer file.Close() でファイルを確実に閉じる
+    defer file.Close()
+
 	// 3. file.WriteString() で内容を書き込む
-	return nil
+	_, err = file.WriteString(content)
+	if err != nil {
+	    return fmt.Errorf("failed to write to file: %w", err)
+    }
+
+    // 4. エラーがなければ nil を返す
+    return nil
 }
 
 // ReadFromFile 関数の実装
 func ReadFromFile(filename string) (string, error) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. os.Open() でファイルを開く
+	file, err := os.Open(filename)
+	if err != nil {
+	    return "", fmt.Errorf("failed to open file: %w", err)
+    }
+
 	// 2. defer file.Close() でファイルを確実に閉じる
+	defer file.Close()
+
 	// 3. io.ReadAll() で全内容を読み取る
+	data, err := io.ReadAll(file)
+	if err != nil {
+	    return "", fmt.Errorf("failed to read file: %w", err)
+	}
+
 	// 4. []byte を string に変換して返す
-	return "", nil
+	return string(data), nil
 }
 
 // CopyFile 関数の実装
 func CopyFile(src, dst string) error {
-	// TODO: 実装する
-	// ヒント:
 	// 1. os.Open() でソースファイルを開く
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer srcFile.Close()
+	
 	// 2. os.Create() でデスティネーションファイルを作成
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+
 	// 3. defer で両方のファイルを閉じる
+	defer dstFile.Close()
+	
+
 	// 4. io.Copy() でファイルをコピー
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("failed to copy file: %w", err)
+	}
 	return nil
 }
