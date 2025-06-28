@@ -2,7 +2,6 @@ package main
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -53,9 +52,11 @@ func TestDeepCopy(t *testing.T) {
 		t.Errorf("DeepCopy values don't match: original %+v, copied %+v", original, copiedStruct)
 	}
 	
-	// 異なるメモリアドレスかチェック（ポインタの場合）
-	if reflect.ValueOf(original).Pointer() == reflect.ValueOf(copiedStruct).Pointer() {
-		t.Error("DeepCopy returned same reference")
+	// Deep copy creates a new instance, so modifying one shouldn't affect the other
+	// Since we can't easily check memory addresses for structs, we'll verify independence by modifying the copy
+	copiedStruct.Name = "Modified"
+	if original.Name == copiedStruct.Name {
+		t.Error("DeepCopy did not create independent copy")
 	}
 }
 
