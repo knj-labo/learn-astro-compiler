@@ -143,78 +143,203 @@ type UserDB struct {
 }
 
 // NewUserDB 関数の実装
+// SQLiteデータベースへの接続を行い、UserDBインスタンスを作成する
 func NewUserDB(dbPath string) (*UserDB, error) {
-	// TODO: 実装する
-	// ヒント:
-	// 1. sql.Open() でデータベースに接続
-	// 2. db.Ping() で接続をテスト
-	// 3. UserDB構造体を返す
-	return nil, nil
+	// SQLiteデータベースへの接続を開く
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	
+	// データベース接続の正常性を確認
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+	
+	// UserDB構造体を初期化して返す
+	return &UserDB{db: db}, nil
 }
 
 // Close メソッドの実装
+// データベース接続を閉じる
 func (udb *UserDB) Close() error {
-	// TODO: 実装する
+	// データベース接続が存在する場合のみ閉じる
+	if udb.db != nil {
+		return udb.db.Close()
+	}
 	return nil
 }
 
 // CreateTable メソッドの実装
+// usersテーブルを作成する（存在しない場合のみ）
 func (udb *UserDB) CreateTable() error {
-	// TODO: 実装する
-	// ヒント:
-	// 1. CREATE TABLE IF NOT EXISTS のSQL文を作成
-	// 2. id (INTEGER PRIMARY KEY), name (TEXT), email (TEXT), age (INTEGER), created_at (DATETIME)
-	// 3. db.Exec() でテーブルを作成
+	// usersテーブルの作成SQL
+	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		email TEXT NOT NULL,
+		age INTEGER NOT NULL,
+		created_at DATETIME NOT NULL
+	)
+	`
+	
+	// SQLを実行してテーブルを作成
+	_, err := udb.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+	
 	return nil
 }
 
 // CreateUser メソッドの実装
+// 新しいユーザーをデータベースに作成し、生成されたIDを返す
 func (udb *UserDB) CreateUser(user User) (int64, error) {
-	// TODO: 実装する
-	// ヒント:
-	// 1. INSERT INTOのSQL文とprepared statementを使用
-	// 2. time.Now() で現在時刻を設定
-	// 3. result.LastInsertId() で新しいIDを取得
-	return 0, nil
+	// ユーザー挿入用のSQL文
+	query := `INSERT INTO users (name, email, age, created_at) VALUES (?, ?, ?, ?)`
+	
+	// prepared statementを作成（SQLインジェクション攻撃を防ぐ）
+	stmt, err := udb.db.Prepare(query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+	
+	// ユーザーデータを挿入（created_atは現在時刻を設定）
+	result, err := stmt.Exec(user.Name, user.Email, user.Age, time.Now())
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute insert: %w", err)
+	}
+	
+	// 自動生成されたIDを取得
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert id: %w", err)
+	}
+	
+	return id, nil
 }
 
 // GetAllUsers メソッドの実装
+// データベースの全ユーザーを取得してスライスで返す
 func (udb *UserDB) GetAllUsers() ([]User, error) {
-	// TODO: 実装する
-	// ヒント:
-	// 1. SELECT * FROM users のクエリを実行
-	// 2. rows.Next() でループ
-	// 3. rows.Scan() で各フィールドをスキャン
-	return nil, nil
+	// 全ユーザー取得用のSQL文
+	query := `SELECT id, name, email, age, created_at FROM users`
+	
+	// クエリを実行して結果セットを取得
+	rows, err := udb.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+	
+	// ユーザースライスを初期化
+	var users []User
+	// 結果セットを一行ずつ処理
+	for rows.Next() {
+		var user User
+		// 各列の値をUser構造体にスキャン
+		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		// スライスにユーザーを追加
+		users = append(users, user)
+	}
+	
+	// イテレーション中のエラーをチェック
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	
+	return users, nil
 }
 
 // GetUserByID メソッドの実装
+// 指定されたIDのユーザーを取得する
 func (udb *UserDB) GetUserByID(id int64) (*User, error) {
-	// TODO: 実装する
-	// ヒント:
-	// 1. SELECT * FROM users WHERE id = ? のクエリ
-	// 2. QueryRow() を使用
-	// 3. Scan() で結果を取得
-	// 4. sql.ErrNoRows をチェック
-	return nil, nil
+	// ID指定でユーザーを取得するSQL文
+	query := `SELECT id, name, email, age, created_at FROM users WHERE id = ?`
+	
+	var user User
+	// 単一行の結果を取得してUser構造体にスキャン
+	err := udb.db.QueryRow(query, id).Scan(&user.ID, &user.Name, &user.Email, &user.Age, &user.CreatedAt)
+	if err != nil {
+		// ユーザーが見つからない場合のエラーハンドリング
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with id %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	
+	// ユーザーのポインタを返す
+	return &user, nil
 }
 
 // UpdateUser メソッドの実装
+// 指定されたユーザーの情報を更新する
 func (udb *UserDB) UpdateUser(user User) error {
-	// TODO: 実装する
-	// ヒント:
-	// 1. UPDATE users SET name=?, email=?, age=? WHERE id=? のクエリ
-	// 2. prepared statement を使用
-	// 3. result.RowsAffected() で更新件数をチェック
+	// ユーザー情報更新用のSQL文
+	query := `UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?`
+	
+	// prepared statementを作成
+	stmt, err := udb.db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+	
+	// 更新を実行
+	result, err := stmt.Exec(user.Name, user.Email, user.Age, user.ID)
+	if err != nil {
+		return fmt.Errorf("failed to execute update: %w", err)
+	}
+	
+	// 更新された行数を取得
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	
+	// 更新された行が0の場合はユーザーが存在しない
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with id %d not found", user.ID)
+	}
+	
 	return nil
 }
 
 // DeleteUser メソッドの実装
+// 指定されたIDのユーザーを削除する
 func (udb *UserDB) DeleteUser(id int64) error {
-	// TODO: 実装する
-	// ヒント:
-	// 1. DELETE FROM users WHERE id=? のクエリ
-	// 2. prepared statement を使用
-	// 3. result.RowsAffected() で削除件数をチェック
+	// ユーザー削除用のSQL文
+	query := `DELETE FROM users WHERE id = ?`
+	
+	// prepared statementを作成
+	stmt, err := udb.db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+	
+	// 削除を実行
+	result, err := stmt.Exec(id)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete: %w", err)
+	}
+	
+	// 削除された行数を取得
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	
+	// 削除された行が0の場合はユーザーが存在しない
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with id %d not found", id)
+	}
+	
 	return nil
 }

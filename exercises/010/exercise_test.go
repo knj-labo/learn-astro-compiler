@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"testing"
-	"time"
 )
 
 func TestNewUserDB(t *testing.T) {
