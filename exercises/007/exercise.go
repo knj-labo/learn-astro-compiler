@@ -60,41 +60,65 @@ func main() {
 
 // FilterEven 関数の実装
 func FilterEven(numbers []int) []int {
-	// TODO: 実装する
-	// ヒント:
 	// 1. 結果用の空のスライスを作成
+	result := []int{}
+
 	// 2. range でスライスをループ
+	for _, n := range numbers {
+
 	// 3. 偶数の場合（n % 2 == 0）は結果に追加
-	return nil
+	    if n%2 == 0 {
+	                result = append(result, n)
+        }
+    }
+	return result
 }
 
 // MapSquare 関数の実装
 func MapSquare(numbers []int) []int {
-	// TODO: 実装する
-	// ヒント:
 	// 1. 同じ長さの結果用スライスを作成：make([]int, len(numbers))
+	result := make([]int, len(numbers))
+
 	// 2. range でスライスをループ
+	for i, n := range numbers {
+
 	// 3. 各要素を二乗して結果に格納
-	return nil
+	    result[i] = n * n
+    }
+	return result
 }
 
 // SortByLength 関数の実装
 func SortByLength(words []string) []string {
-	// TODO: 実装する
-	// ヒント:
 	// 1. 元のスライスをコピー：make([]string, len(words)) + copy()
+	result := make([]string, len(words))
+	copy(result, words)
+
 	// 2. sort.Slice() を使用
+	sort.Slice(result, func(i, j int) bool {
+
 	// 3. 比較関数で len(words[i]) < len(words[j]) を使用
-	return nil
+	    return len(result[i]) < len(result[j])
+    })
+	return result
 }
 
 // RemoveDuplicates 関数の実装
 func RemoveDuplicates(numbers []int) []int {
-	// TODO: 実装する
-	// ヒント:
 	// 1. map[int]bool を作成して重複チェック用
+	seen := make(map[int]bool)
+
 	// 2. 結果用の空のスライスを作成
+	result := []int{}
+
 	// 3. range でスライスをループ
-	// 4. mapに存在しない場合のみ結果に追加し、mapにマーク
-	return nil
+	for _, n := range numbers {
+
+		// 4. mapに存在しない場合のみ結果に追加し、mapにマーク
+		if !seen[n] {
+			seen[n] = true
+			result = append(result, n)
+		}
+	}
+	return result
 }
