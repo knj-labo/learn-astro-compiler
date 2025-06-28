@@ -21,6 +21,16 @@ go run ./exercises/007/exercise.go
 go run ./exercises/008/exercise.go
 go run ./exercises/009/exercise.go
 cd exercises/010 && go run exercise.go  # Special case: has dependencies
+go run ./exercises/011/exercise.go
+go run ./exercises/012/exercise.go
+go run ./exercises/013/exercise.go
+go run ./exercises/014/exercise.go
+go run ./exercises/015/exercise.go
+go run ./exercises/016/exercise.go
+go run ./exercises/017/exercise.go
+go run ./exercises/018/exercise.go
+go run ./exercises/019/exercise.go
+go run ./exercises/020/exercise.go
 ```
 
 ### Testing
@@ -36,12 +46,22 @@ go test ./exercises/007 -v
 go test ./exercises/008 -v
 go test ./exercises/009 -v
 cd exercises/010 && go test -v  # Special case: has dependencies
+go test ./exercises/011 -v
+go test ./exercises/012 -v
+go test ./exercises/013 -v
+go test ./exercises/014 -v
+go test ./exercises/015 -v
+go test ./exercises/016 -v
+go test ./exercises/017 -v
+go test ./exercises/018 -v
+go test ./exercises/019 -v
+go test ./exercises/020 -v
 
 # Test all exercises (excluding 010 due to dependencies)
-go test ./exercises/001 ./exercises/002 ./exercises/003 ./exercises/004 ./exercises/005 ./exercises/006 ./exercises/007 ./exercises/008 ./exercises/009 -v
+go test ./exercises/001 ./exercises/002 ./exercises/003 ./exercises/004 ./exercises/005 ./exercises/006 ./exercises/007 ./exercises/008 ./exercises/009 ./exercises/011 ./exercises/012 ./exercises/013 ./exercises/014 ./exercises/015 ./exercises/016 ./exercises/017 ./exercises/018 ./exercises/019 ./exercises/020 -v
 
 # Run tests with coverage
-go test ./exercises/001 ./exercises/002 ./exercises/003 ./exercises/004 ./exercises/005 ./exercises/006 ./exercises/007 ./exercises/008 ./exercises/009 -v -cover
+go test ./exercises/001 ./exercises/002 ./exercises/003 ./exercises/004 ./exercises/005 ./exercises/006 ./exercises/007 ./exercises/008 ./exercises/009 ./exercises/011 ./exercises/012 ./exercises/013 ./exercises/014 ./exercises/015 ./exercises/016 ./exercises/017 ./exercises/018 ./exercises/019 ./exercises/020 -v -cover
 ```
 
 ### Development
@@ -72,7 +92,17 @@ The codebase follows a simple exercise-based structure:
 - Exercise 007: Slice operations and sorting algorithms (Incomplete - needs implementation)
 - Exercise 008: Advanced concurrency patterns with context (Incomplete - needs implementation)
 - Exercise 009: Reflection and custom types (Incomplete - needs implementation)
-- Exercise 010: Database operations and CRUD with SQLite (Incomplete - needs implementation)
+- Exercise 010: Database operations and CRUD with SQLite (Complete)
+- Exercise 011: JSON processing and RESTful API (Incomplete - needs implementation)
+- Exercise 012: File I/O and CSV processing (Incomplete - needs implementation)
+- Exercise 013: Regular expressions and text processing (Incomplete - needs implementation)
+- Exercise 014: Concurrency with worker pools (Incomplete - needs implementation)
+- Exercise 015: Template engine and HTML generation (Incomplete - needs implementation)
+- Exercise 016: Command-line tool with flags (Incomplete - needs implementation)
+- Exercise 017: Middleware and HTTP handlers (Incomplete - needs implementation)
+- Exercise 018: Testing and benchmarking (Incomplete - needs implementation)
+- Exercise 019: Encryption and security (Incomplete - needs implementation)
+- Exercise 020: WebSocket real-time communication (Incomplete - needs implementation)
 
 ## Key Development Notes
 
