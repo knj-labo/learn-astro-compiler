@@ -94,7 +94,7 @@ The codebase follows a simple exercise-based structure:
 - Exercise 009: Reflection and custom types (Incomplete - needs implementation)
 - Exercise 010: Database operations and CRUD with SQLite (Complete)
 - Exercise 011: JSON processing and RESTful API (Complete)
-- Exercise 012: File I/O and CSV processing (Incomplete - needs implementation)
+- Exercise 012: File I/O and CSV processing (Complete)
 - Exercise 013: Regular expressions and text processing (Incomplete - needs implementation)
 - Exercise 014: Concurrency with worker pools (Incomplete - needs implementation)
 - Exercise 015: Template engine and HTML generation (Incomplete - needs implementation)
