@@ -93,8 +93,8 @@ The codebase follows a simple exercise-based structure:
 - Exercise 008: Advanced concurrency patterns with context (Incomplete - needs implementation)
 - Exercise 009: Reflection and custom types (Incomplete - needs implementation)
 - Exercise 010: Database operations and CRUD with SQLite (Complete)
-- Exercise 011: JSON processing and RESTful API (Incomplete - needs implementation)
-- Exercise 012: File I/O and CSV processing (Incomplete - needs implementation)
+- Exercise 011: JSON processing and RESTful API (Complete)
+- Exercise 012: File I/O and CSV processing (Complete)
 - Exercise 013: Regular expressions and text processing (Complete)
 - Exercise 014: Concurrency with worker pools (Incomplete - needs implementation)
 - Exercise 015: Template engine and HTML generation (Incomplete - needs implementation)
@@ -111,3 +111,40 @@ The codebase follows a simple exercise-based structure:
 3. Uses Go's standard testing framework - no test runners or additional tools needed
 4. Each exercise is independent - modifications to one exercise don't affect others
 5. When implementing exercises, ensure all tests pass before considering it complete
+
+## Implementation Guidelines
+
+### Code Style and Comments
+When implementing exercises, focus on clean, well-documented code:
+
+1. **Remove TODO comments**: Delete original TODO comments and hints after implementation
+2. **Add inline implementation comments**: Place step-by-step comments within the implementation to explain the logic
+3. **Format for clarity**: Structure comments to clearly explain what each section of code does
+
+Example pattern:
+```go
+func ExampleFunction() {
+    // 1. Step one description
+    actualImplementationCode()
+    
+    // 2. Step two description  
+    moreImplementationCode()
+}
+```
+
+### Testing and Validation
+- Always run tests after implementation: `go test ./exercises/XXX -v`
+- Ensure all tests pass before marking an exercise as complete
+- Fix any linting issues that arise during development
+- Remove unused imports from test files if needed
+
+### Error Handling
+- Implement proper error handling for all operations
+- Return appropriate HTTP status codes for web APIs
+- Use descriptive error messages for debugging
+
+### JSON and HTTP APIs
+- Set proper Content-Type headers for JSON responses
+- Validate input data before processing
+- Follow RESTful conventions for endpoint design
+- Use standard HTTP status codes (200, 201, 404, 400, etc.)
