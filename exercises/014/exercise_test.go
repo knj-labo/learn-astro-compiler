@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -43,7 +44,7 @@ func TestWorker(t *testing.T) {
 	}
 
 	// Start worker
-	worker.Start()
+	go worker.Start()
 
 	// Submit task
 	task := Task{
