@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -137,7 +137,9 @@ func main() {
 	// 結果の統計
 	var sum int
 	for _, result := range results {
-		sum += result.Result
+		if val, ok := result.Result.(int); ok {
+			sum += val
+		}
 	}
 	fmt.Printf("Sum of results: %d\n", sum)
 	fmt.Printf("Average result: %.2f\n", float64(sum)/float64(len(results)))
@@ -214,143 +216,372 @@ type BatchProcessor struct {
 
 // NewWorkerPoolManager関数の実装
 func NewWorkerPoolManager(workerCount, queueSize int) *WorkerPoolManager {
-	// TODO: 実装する
-	// ヒント:
 	// 1. WorkerPoolManager構造体を初期化
 	// 2. タスクキューと結果キューを作成
+	taskQueue := make(chan Task, queueSize)
+	resultQueue := make(chan TaskResult, queueSize)
+	stopChan := make(chan bool, workerCount)
+	
 	// 3. 統計情報を初期化
+	statistics := &WorkerStatistics{}
+	
+	wpm := &WorkerPoolManager{
+		workerCount: workerCount,
+		taskQueue:   taskQueue,
+		resultQueue: resultQueue,
+		statistics:  statistics,
+		stopChan:    stopChan,
+	}
+	
 	// 4. ワーカーを作成（まだ開始しない）
-	return nil
+	for i := 0; i < workerCount; i++ {
+		worker := NewWorker(i, taskQueue, resultQueue, stopChan)
+		wpm.workers = append(wpm.workers, worker)
+	}
+	
+	return wpm
 }
 
 // Start メソッドの実装
 func (wpm *WorkerPoolManager) Start() {
-	// TODO: 実装する
-	// ヒント:
 	// 1. 各ワーカーを開始
-	// 2. 結果処理のgoroutineを開始
 	// 3. ワーカーグループに追加
+	for _, worker := range wpm.workers {
+		wpm.wg.Add(1)
+		go func(w *Worker) {
+			defer wpm.wg.Done()
+			w.Start()
+		}(worker)
+	}
+	
+	// 2. 結果処理のgoroutineを開始
+	go wpm.processResults()
 }
 
 // Stop メソッドの実装
 func (wpm *WorkerPoolManager) Stop() {
-	// TODO: 実装する
-	// ヒント:
 	// 1. stopChanを使ってワーカーに停止信号を送信
+	for i := 0; i < len(wpm.workers); i++ {
+		select {
+		case wpm.stopChan <- true:
+		default:
+		}
+	}
+	
 	// 2. 全ワーカーの完了を待つ
+	wpm.wg.Wait()
+	
 	// 3. チャネルを閉じる
+	close(wpm.taskQueue)
+	close(wpm.resultQueue)
 }
 
 // SubmitTask メソッドの実装
 func (wpm *WorkerPoolManager) SubmitTask(task Task) {
-	// TODO: 実装する
-	// ヒント:
 	// 1. タスクに送信時刻を設定
+	task.SubmitTime = time.Now()
+	
 	// 2. 優先度に基づいてタスクをキューに追加
-	// 3. 統計情報を更新
+	select {
+	case wpm.taskQueue <- task:
+		// 3. 統計情報を更新
+		wpm.mutex.Lock()
+		wpm.statistics.TotalSubmitted++
+		wpm.statistics.QueueSize = len(wpm.taskQueue)
+		wpm.mutex.Unlock()
+	default:
+		// キューが満杯の場合
+		fmt.Printf("Task queue is full, dropping task %s\n", task.ID)
+	}
 }
 
 // GetStatistics メソッドの実装
 func (wpm *WorkerPoolManager) GetStatistics() WorkerStatistics {
-	// TODO: 実装する
-	// ヒント:
 	// 1. 読み取りロックを取得
+	wpm.mutex.RLock()
+	defer wpm.mutex.RUnlock()
+	
 	// 2. 現在の統計情報をコピーして返す
-	return WorkerStatistics{}
+	stats := *wpm.statistics
+	stats.ActiveWorkers = len(wpm.workers)
+	stats.QueueSize = len(wpm.taskQueue)
+	
+	return stats
+}
+
+// processResults processes task results and updates statistics
+func (wpm *WorkerPoolManager) processResults() {
+	var totalProcessTime time.Duration
+	var processedCount int
+	
+	for result := range wpm.resultQueue {
+		wpm.mutex.Lock()
+		if result.Success {
+			wpm.statistics.TotalCompleted++
+		} else {
+			wpm.statistics.TotalFailed++
+		}
+		
+		totalProcessTime += result.ProcessTime
+		processedCount++
+		
+		if processedCount > 0 {
+			wpm.statistics.AvgProcessingTime = float64(totalProcessTime.Nanoseconds()) / float64(processedCount) / 1e6 // ms
+		}
+		
+		wpm.mutex.Unlock()
+	}
 }
 
 // NewWorker関数の実装
 func NewWorker(id int, taskQueue chan Task, resultQueue chan TaskResult, stopChan chan bool) *Worker {
-	// TODO: 実装する
-	// ヒント:
 	// 1. Worker構造体を初期化
 	// 2. チャネルを設定
-	return nil
+	return &Worker{
+		ID:          id,
+		taskQueue:   taskQueue,
+		resultQueue: resultQueue,
+		stopChan:    stopChan,
+		active:      false,
+	}
 }
 
 // Start メソッド（Worker）の実装
 func (w *Worker) Start() {
-	// TODO: 実装する
-	// ヒント:
 	// 1. goroutineでワーカーのメインループを開始
-	// 2. タスクキューからタスクを受信
-	// 3. タスクを処理して結果を送信
-	// 4. 停止信号をチェック
+	w.mutex.Lock()
+	w.active = true
+	w.mutex.Unlock()
+	
+	for {
+		select {
+		// 2. タスクキューからタスクを受信
+		case task, ok := <-w.taskQueue:
+			if !ok {
+				return // チャネルが閉じられた
+			}
+			
+			// 3. タスクを処理して結果を送信
+			result := w.processTask(task)
+			
+			select {
+			case w.resultQueue <- result:
+			default:
+				// 結果キューが満杯の場合はログ出力
+				fmt.Printf("Result queue is full, dropping result for task %s\n", task.ID)
+			}
+			
+		// 4. 停止信号をチェック
+		case <-w.stopChan:
+			w.mutex.Lock()
+			w.active = false
+			w.mutex.Unlock()
+			return
+		}
+	}
 }
 
 // processTask メソッドの実装
 func (w *Worker) processTask(task Task) TaskResult {
-	// TODO: 実装する
-	// ヒント:
-	// 1. タスクタイプに基づいて適切な処理を実行
 	// 2. 処理時間を測定
+	startTime := time.Now()
+	
+	result := TaskResult{
+		TaskID:  task.ID,
+		Success: true,
+	}
+	
+	// 1. タスクタイプに基づいて適切な処理を実行
 	// 3. エラーハンドリングを実装
+	switch task.Type {
+	case "square":
+		if num, ok := task.Data.(int); ok {
+			result.Result = calculateSquare(num)
+		} else {
+			result.Success = false
+			result.Error = "Invalid data type for square operation"
+		}
+		
+	case "prime":
+		if num, ok := task.Data.(int); ok {
+			result.Result = isPrime(num)
+		} else {
+			result.Success = false
+			result.Error = "Invalid data type for prime operation"
+		}
+		
+	case "file":
+		if size, ok := task.Data.(int); ok {
+			result.Result = simulateFileProcessing(size)
+		} else {
+			result.Success = false
+			result.Error = "Invalid data type for file operation"
+		}
+		
+	case "network":
+		if url, ok := task.Data.(string); ok {
+			networkResult, err := simulateNetworkRequest(url)
+			if err != nil {
+				result.Success = false
+				result.Error = err.Error()
+			} else {
+				result.Result = networkResult
+			}
+		} else {
+			result.Success = false
+			result.Error = "Invalid data type for network operation"
+		}
+		
+	default:
+		result.Success = false
+		result.Error = fmt.Sprintf("Unknown task type: %s", task.Type)
+	}
+	
 	// 4. TaskResult構造体を返す
-	return TaskResult{}
+	result.ProcessTime = time.Since(startTime)
+	return result
 }
 
 // NewBatchProcessor関数の実装
 func NewBatchProcessor(workerCount, batchSize int) *BatchProcessor {
-	// TODO: 実装する
-	// ヒント:
 	// 1. BatchProcessor構造体を初期化
-	return nil
+	return &BatchProcessor{
+		workerCount: workerCount,
+		batchSize:   batchSize,
+	}
 }
 
 // ProcessBatch メソッドの実装
 func (bp *BatchProcessor) ProcessBatch(items []BatchItem) []BatchResult {
-	// TODO: 実装する
-	// ヒント:
-	// 1. アイテムをバッチに分割
-	// 2. 各バッチを並列処理
-	// 3. 結果を収集して返す
+	results := make([]BatchResult, 0, len(items))
+	resultChan := make(chan BatchResult, len(items))
+	
 	// 4. sync.WaitGroupを使用して同期
-	return nil
+	var wg sync.WaitGroup
+	
+	// 1. アイテムをバッチに分割
+	batches := make([][]BatchItem, 0)
+	for i := 0; i < len(items); i += bp.batchSize {
+		end := i + bp.batchSize
+		if end > len(items) {
+			end = len(items)
+		}
+		batches = append(batches, items[i:end])
+	}
+	
+	// 2. 各バッチを並列処理
+	batchChan := make(chan []BatchItem, len(batches))
+	
+	// ワーカーを開始
+	for i := 0; i < bp.workerCount; i++ {
+		wg.Add(1)
+		go processBatchItems(batchChan, resultChan, &wg)
+	}
+	
+	// バッチをワーカーに送信
+	go func() {
+		for _, batch := range batches {
+			batchChan <- batch
+		}
+		close(batchChan)
+	}()
+	
+	// 3. 結果を収集して返す
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+	
+	for result := range resultChan {
+		results = append(results, result)
+	}
+	
+	return results
 }
 
 // processBatchItems ヘルパー関数の実装
-func processBatchItems(items []BatchItem, results chan<- BatchResult, wg *sync.WaitGroup) {
-	// TODO: 実装する
-	// ヒント:
+func processBatchItems(batchChan <-chan []BatchItem, results chan<- BatchResult, wg *sync.WaitGroup) {
 	// 1. defer wg.Done()を設定
-	// 2. 各アイテムを処理
-	// 3. 結果をチャネルに送信
+	defer wg.Done()
+	
+	for batch := range batchChan {
+		// 2. 各アイテムを処理
+		for _, item := range batch {
+			result := BatchResult{
+				ID: item.ID,
+			}
+			
+			// 簡単な処理例：データを2倍にする
+			if num, ok := item.Data.(int); ok {
+				result.Result = num * 2
+			} else {
+				result.Error = "Invalid data type"
+			}
+			
+			// 3. 結果をチャネルに送信
+			results <- result
+		}
+	}
 }
 
 // calculateSquare ヘルパー関数の実装
 func calculateSquare(n int) int {
-	// TODO: 実装する
-	// ヒント:
-	// 1. 平方を計算
 	// 2. 処理時間をシミュレート
-	return 0
+	time.Sleep(time.Duration(rand.Intn(10)+1) * time.Millisecond)
+	
+	// 1. 平方を計算
+	return n * n
 }
 
 // isPrime ヘルパー関数の実装
 func isPrime(n int) bool {
-	// TODO: 実装する
-	// ヒント:
+	// 処理時間をシミュレート
+	time.Sleep(time.Duration(rand.Intn(20)+10) * time.Millisecond)
+	
+	if n < 2 {
+		return false
+	}
+	if n == 2 {
+		return true
+	}
+	if n%2 == 0 {
+		return false
+	}
+	
 	// 1. 素数判定のアルゴリズムを実装
 	// 2. 2からsqrt(n)まで除算チェック
-	return false
+	sqrt := int(math.Sqrt(float64(n)))
+	for i := 3; i <= sqrt; i += 2 {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // simulateFileProcessing ヘルパー関数の実装
 func simulateFileProcessing(size int) string {
-	// TODO: 実装する
-	// ヒント:
-	// 1. ファイル処理をシミュレート
 	// 2. ランダムな処理時間を追加
+	// サイズに基づいて処理時間を計算
+	processingTime := time.Duration(size/100+rand.Intn(50)) * time.Millisecond
+	time.Sleep(processingTime)
+	
+	// 1. ファイル処理をシミュレート
 	// 3. 処理結果を文字列で返す
-	return ""
+	return fmt.Sprintf("Processed file of size %d bytes in %v", size, processingTime)
 }
 
 // simulateNetworkRequest ヘルパー関数の実装
 func simulateNetworkRequest(url string) (string, error) {
-	// TODO: 実装する
-	// ヒント:
-	// 1. ネットワークリクエストをシミュレート
 	// 2. time.Sleep()で遅延を追加
+	delay := time.Duration(rand.Intn(1000)+500) * time.Millisecond
+	time.Sleep(delay)
+	
 	// 3. ランダムにエラーを発生させる
-	return "", nil
+	if rand.Float32() < 0.1 { // 10%の確率でエラー
+		return "", fmt.Errorf("network timeout for URL: %s", url)
+	}
+	
+	// 1. ネットワークリクエストをシミュレート
+	return fmt.Sprintf("Response from %s (took %v)", url, delay), nil
 }
